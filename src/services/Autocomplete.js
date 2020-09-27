@@ -58,7 +58,7 @@ module.exports = class Autocomplete {
 
     return companies.recordsets[0].map(i => ({
       value: i.Country,
-      label: `${i.Country}, ${i.Country}`
+      label: `${i.Country}`
     }));
   }
 
