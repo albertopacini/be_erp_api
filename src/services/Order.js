@@ -29,10 +29,8 @@ module.exports = class Order {
       const ordersRawData = await Order._retrieveRawOrders();
       const ordersDetailsRawData = await Order._retrieveRawOrdersDetails();
       const formattedRows = Order._formatRawData(ordersRawData, ordersDetailsRawData);
-      console.log(formattedRows);
       await mongo().collection('orders').insertMany(formattedRows);
     } catch (e) {
-      console.log(e);
       throw new Error(`Order: Failed to sync data sources in "syncDataSources" method. \n${e}`);
     }
   }
@@ -100,6 +98,7 @@ module.exports = class Order {
       'customers': 'customer.id',
       'companies': 'customer.company',
       'cities': 'customer.city',
+      'countries': 'customer.country',
     };
     for (let key in filters) {
       if (sourceMap[key]) {
@@ -116,7 +115,6 @@ module.exports = class Order {
       }
     }
 
-    console.log(conditions);
     return conditions;
   }
 

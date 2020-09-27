@@ -42,4 +42,13 @@ module.exports = (app) => {
     }
   });
 
+  router.get('/countries', async (req, res, next) => {
+    try {
+      const data = await Autocomplete.findCountriesByName(req.query.q);
+      res.json(data);
+    } catch (err) {
+      next(err);
+    }
+  });
+
 };

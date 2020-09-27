@@ -50,4 +50,16 @@ module.exports = class Autocomplete {
     }));
   }
 
+  static async findCountriesByName(query) {
+    const companies = await pool()
+      .request()
+      .input('q', `%${query}%`)
+      .query`SELECT DISTINCT TOP 20 Country FROM Customers WHERE Country LIKE @q;`;
+
+    return companies.recordsets[0].map(i => ({
+      value: i.Country,
+      label: `${i.Country}, ${i.Country}`
+    }));
+  }
+
 }

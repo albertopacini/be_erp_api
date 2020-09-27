@@ -8,7 +8,6 @@ async function startServer() {
   try {
     await loaders.default(app);
   } catch (e) {
-    console.log(e);
     process.exit(1);
   }
 

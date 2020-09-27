@@ -18,7 +18,6 @@ module.exports = (app) => {
 
   // Error handler
   app.use((err, req, res, next) => {
-    console.log(err);
     if (!err.status || err.status > 499) {
       return res.sendStatus(err.status || 500);
     }
