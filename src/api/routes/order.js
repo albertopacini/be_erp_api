@@ -15,4 +15,13 @@ module.exports = (app) => {
     }
   });
 
+  router.get('/sync', async (req, res, next) => {
+    try {
+      const data = await Order.syncDataSources();;
+      res.json(data);
+    } catch (err) {
+      next(err);
+    }
+  });
+
 };
