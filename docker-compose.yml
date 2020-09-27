@@ -1,0 +1,31 @@
+version: "3.3"
+services:
+  be_mssql:
+    image: "mcr.microsoft.com/mssql/server"
+    ports:
+      - "1433:1433"
+    environment:
+      SA_PASSWORD: "be_erp_pw_2020!"
+      ACCEPT_EULA: "Y"
+  be_mongodb:
+    image: mongo
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: "be_erp"
+      MONGO_INITDB_ROOT_USERNAME: "be_erp"
+      MONGO_INITDB_ROOT_PASSWORD: "be_erp_pw_2020!"
+  be_server:
+    depends_on:
+      - be_mongodb
+      - be_mssql
+    build: .
+    volumes:
+      - ./src:/usr/src/app
+      - /usr/src/app/node_modules
+    restart: always
+    ports:
+      - "3200:3200"
+    environment:
+      NODE_ENV: development
+      PORT: 3200
