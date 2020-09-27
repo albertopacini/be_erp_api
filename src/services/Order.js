@@ -29,8 +29,10 @@ module.exports = class Order {
       const ordersRawData = await Order._retrieveRawOrders();
       const ordersDetailsRawData = await Order._retrieveRawOrdersDetails();
       const formattedRows = Order._formatRawData(ordersRawData, ordersDetailsRawData);
+      console.log(formattedRows);
       await mongo().collection('orders').insertMany(formattedRows);
     } catch (e) {
+      console.log(e);
       throw new Error(`Order: Failed to sync data sources in "syncDataSources" method. \n${e}`);
     }
   }
