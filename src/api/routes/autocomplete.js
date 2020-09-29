@@ -51,4 +51,13 @@ module.exports = (app) => {
     }
   });
 
+  router.get('/products', async (req, res, next) => {
+    try {
+      const data = await Autocomplete.findProductsByName(req.query.q);
+      res.json(data);
+    } catch (err) {
+      next(err);
+    }
+  });
+
 };

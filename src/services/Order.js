@@ -5,8 +5,8 @@ module.exports = class Order {
 
   static async getOrders(filters, skip = 0, limit = 30) {
     try {
-
       const conditions = Order._formatFilterConditions(filters);
+
       const count = await mongo()
         .collection('orders')
         .count(conditions);
@@ -22,12 +22,92 @@ module.exports = class Order {
     } catch (e) {
       throw new Error(`Order: Failed to sync data sources in "syncDataSources" method. \n${e}`);
     }
+
+  }
+
+  static async createOrder({ customerId, requiredDate, shippedDate, shippingName, shipVia, freight, shippingAddress, shippingCity, shippingPostalCode, shippingRegion, shippingCountry }, orderItems) {
+
+    const order = await pool()
+      .request()
+      .input('customerId', customerId)
+      .input('employeeId', 1) // TODO: Set employee from request.
+      .input('orderDate', new Date())
+      .input('requiredDate', requiredDate || null)
+      .input('shippedDate', shippedDate || null)
+      .input('shipVia', shipVia || null)
+      .input('freight', freight || null)
+      .input('shippingName', shippingName || null)
+      .input('shippingAddress', shippingAddress || null)
+      .input('shippingCity', shippingCity || null)
+      .input('shippingPostalCode', shippingPostalCode || null)
+      .input('shippingRegion', shippingRegion || null)
+      .input('shippingCountry', shippingCountry || null)
+      .query`INSERT INTO Orders 
+      ( CustomerID,
+        EmployeeID,
+        OrderDate,
+        RequiredDate,
+        ShippedDate,
+        ShipVia,
+        freight,
+        ShipName,
+        ShipAddress,
+        ShipCity,
+        ShipRegion,
+        ShipPostalCode,
+        ShipCountry) 
+      VALUES 
+      ( @customerId,
+        @employeeId,
+        @orderDate,
+        @requiredDate,
+        @shippedDate,
+        @shipVia,
+        @freight,
+        @shippingName,
+        @shippingAddress,
+        @shippingCity,
+        @shippingRegion,
+        @shippingPostalCode,
+        @shippingCountry);SELECT SCOPE_IDENTITY() AS id;`
+
+    //TODO: Create order items here.    
+    Order.syncDataSources();
+    return order.recordset[0];
+  }
+
+  static async createOrderItem(orderId, items) {
+    //TODO: Insert order items
+  }
+
+  static async cloneOrder(orderId) {
+    const order = await pool()
+      .request()
+      .input('orderId', orderId)
+      .query`SELECT * FROM Orders WHERE OrderId = @orderId`;
+    if (order.recordset[0]) {
+      return Order.createOrder({
+        customerId: order.recordset[0].CustomerID,
+        requiredDate: order.recordset[0].OrderDate,
+        shippedDate: order.recordset[0].ShippedDate,
+        shippingName: order.recordset[0].ShipName,
+        shipVia: order.recordset[0].ShipVia,
+        freight: order.recordset[0].Freight,
+        shippingAddress: order.recordset[0].ShipAddress,
+        shippingCity: order.recordset[0].ShipCity,
+        shippingRegion: order.recordset[0].ShipRegion,
+        shippingPostalCode: order.recordset[0].ShipPostalCode,
+        ShipCountry: order.recordset[0].ShipCountry,
+      })
+    }
+
   }
 
   static async syncDataSources() {
     try {
-      const ordersRawData = await Order._retrieveRawOrders();
-      const ordersDetailsRawData = await Order._retrieveRawOrdersDetails();
+      const lastSyncRecord = await Order._getLastSyncRecord();
+      const ordersRawData = await Order._retrieveRawOrders(lastSyncRecord);
+      const ordersDetailsRawData = await Order._retrieveRawOrdersDetails(lastSyncRecord);
       const formattedRows = Order._formatRawData(ordersRawData, ordersDetailsRawData);
       await mongo().collection('orders').insertMany(formattedRows);
     } catch (e) {
@@ -35,8 +115,14 @@ module.exports = class Order {
     }
   }
 
+  static async _getLastSyncRecord() {
+    const lastRecord = await mongo().collection('orders').find().sort({ orderId: -1 }).limit(1).toArray();
+    return (lastRecord && lastRecord.length) ? lastRecord[0].orderId : 0;
+  }
+
   static _formatRawData(ordersRawData, ordersDetailRawData) {
     let results = {};
+
     Array.isArray(ordersRawData.recordsets) && ordersRawData.recordsets.forEach(recordSet => {
       recordSet.forEach(e => {
         results[e.OrderId] = {
@@ -97,8 +183,8 @@ module.exports = class Order {
       'orders': 'orderId',
       'customers': 'customer.id',
       'companies': 'customer.company',
-      'cities': 'customer.city',
-      'countries': 'customer.country',
+      'cities': 'shipping.city',
+      'countries': 'shipping.country',
     };
     for (let key in filters) {
       if (sourceMap[key]) {
@@ -118,8 +204,11 @@ module.exports = class Order {
     return conditions;
   }
 
-  static async _retrieveRawOrdersDetails() {
-    return pool().query`SELECT 
+  static async _retrieveRawOrdersDetails(lastSyncId) {
+    return pool()
+      .request()
+      .input('lastSyncId', lastSyncId)
+      .query`SELECT 
     [Order Details].OrderID,
     [Order Details].UnitPrice,
     [Order Details].Quantity,
@@ -131,11 +220,14 @@ module.exports = class Order {
       FROM [Order Details] 
       INNER JOIN [Products] ON Products.ProductID = [Order Details].ProductID
       INNER JOIN [Suppliers] ON Suppliers.SupplierID = [Products].SupplierID
-      INNER JOIN [Categories] ON Categories.CategoryID = [Products].CategoryID`;
+      INNER JOIN [Categories] ON Categories.CategoryID = [Products].CategoryID WHERE OrderID > @lastSyncId`;
   }
 
-  static async _retrieveRawOrders(filters) {
-    return pool().query`SELECT 
+  static async _retrieveRawOrders(lastSyncId) {
+    return pool()
+      .request()
+      .input('lastSyncId', lastSyncId)
+      .query`SELECT 
     Orders.OrderId,
     Orders.OrderDate,
     Orders.ShippedDate,      
@@ -157,7 +249,7 @@ module.exports = class Order {
     Customers.Phone,
     Customers.Fax
     FROM Orders 
-    INNER JOIN Customers ON Customers.CustomerId = Orders.CustomerId`
+    INNER JOIN Customers ON Customers.CustomerId = Orders.CustomerId WHERE OrderID > @lastSyncId`
   }
 
 }

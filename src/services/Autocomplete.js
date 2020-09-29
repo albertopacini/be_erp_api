@@ -42,11 +42,11 @@ module.exports = class Autocomplete {
     const companies = await pool()
       .request()
       .input('q', `%${query}%`)
-      .query`SELECT DISTINCT TOP 20 City,Country FROM Customers WHERE City LIKE @q OR Country LIKE @q;`;
+      .query`SELECT DISTINCT TOP 20 ShipCity,ShipCountry FROM Orders WHERE ShipCity LIKE @q OR ShipCountry LIKE @q;`;
 
     return companies.recordsets[0].map(i => ({
-      value: i.City,
-      label: `${i.City}, ${i.Country}`
+      value: i.ShipCity,
+      label: `${i.ShipCity}, ${i.ShipCountry}`
     }));
   }
 
@@ -54,11 +54,23 @@ module.exports = class Autocomplete {
     const companies = await pool()
       .request()
       .input('q', `%${query}%`)
-      .query`SELECT DISTINCT TOP 20 Country FROM Customers WHERE Country LIKE @q;`;
+      .query`SELECT DISTINCT TOP 20 ShipCountry FROM Orders WHERE ShipCountry LIKE @q;`;
 
     return companies.recordsets[0].map(i => ({
-      value: i.Country,
-      label: `${i.Country}`
+      value: i.ShipCountry,
+      label: i.ShipCountry
+    }));
+  }
+
+  static async findProductsByName(query) {
+    const companies = await pool()
+      .request()
+      .input('q', `%${query}%`)
+      .query`SELECT DISTINCT TOP 20 ProductId,ProductName FROM Products WHERE ProductName LIKE @q;`;
+
+    return companies.recordsets[0].map(i => ({
+      value: i.ProductId,
+      label: i.ProductName
     }));
   }
 
